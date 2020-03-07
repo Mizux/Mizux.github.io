@@ -1,3 +1,5 @@
+var GUI = new dat.GUI({ load: JSON });
+
 var PRNG = function(exports) {
   function setSeed(seed) {
     // Create a length 624 array to store the state of the generator
