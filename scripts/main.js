@@ -52,11 +52,15 @@ var PRNG = function(exports) {
       var x = (exports.MT[ i ] & upper_mask) +
         (exports.MT[(i + 1) % n ] & lower_mask);
 
-      var xA = (x >> 1);
+      exports.MT[ i ] = exports.MT[ (i + m) % n] ^ (x >> 1);
       if (x % 2 != 0) {
-        xA = xA ^ a;
+        exports.MT[ i ] = exports.MT[ i ] ^ a;
       }
-      exports.MT[ i ] = exports.MT[ (i + m) % n] ^ xA;
+      //var xA = (x >> 1);
+      //if (x % 2 != 0) {
+      //  xA = xA ^ a;
+      //}
+      //exports.MT[ i ] = exports.MT[ (i + m) % n] ^ xA;
     }
   }
 
@@ -64,7 +68,7 @@ var PRNG = function(exports) {
     return (exports.extractNumber() / lower_mask);
   }
 
-  exports.MT = new Uint32Array(624);
+  exports.MT = new Uint32Array(n);
   exports.generateNumbers = generateNumbers;
   exports.extractNumber = extractNumber;
   exports.setSeed = setSeed;
