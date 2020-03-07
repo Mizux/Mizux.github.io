@@ -1,43 +1,78 @@
 var GUI = new dat.GUI({ load: JSON });
 
+// Implementation of MT19947
+// see: https://en.wikipedia.org/wiki/Mersenne_Twister
 var PRNG = function(exports) {
+  const w = 32;
+  const n = 624;
+  const m = 397;
+  const r = 31;
+
+  const a = 0x9908B0DF;
+
+  const u = 11;
+  const d = 0xffffffff;
+
+  const s= 7;
+  const b = 0x9D2C5680;
+
+  const t = 15;
+  const c = 0xEFC60000;
+
+  const l = 18;
+
+  const lower_mask = (1 << r) - 1;
+  const upper_mask = lower_mask + 1;
+
+  const f = 1812433253;
+
   function setSeed(seed) {
-    // Create a length 624 array to store the state of the generator
-    exports.MT = new Uint32Array(624);
     exports.index = 0;
     exports.MT[ 0 ] = seed;
-    for(var i = 1 ; i < 624; i++) {
-      exports.MT[ i ] = (1812433253 * (exports.MT[i-1] ^ (exports.MT[ i-1 ] >> 30 ) + i));
+    for(var i = 1 ; i < n; i++) {
+      exports.MT[ i ] = (f * (exports.MT[i-1] ^ (exports.MT[ i-1 ] >> (w - 2) ) + i));
     }
   }
+
   function extractNumber() {
     if(exports.index == 0) { exports.generateNumbers() }
 
     var y = exports.MT[ exports.index ];
-    y = y ^ (y >> 11);
-    y = y ^ ((y << 7) & 2636928640);
-    y = y ^ ((y << 15) & 4022730752);
-    y = y ^ (y >> 18);
+    y = y ^ ((y >> u) & d);
+    y = y ^ ((y << s) & b);
+    y = y ^ ((y << t) & c);
+    y = y ^ (y >> l);
 
-    exports.index = (exports.index + 1) % 624;
+    exports.index = (exports.index + 1) % n;
     return y;
   }
 
   function generateNumbers() {
-    for(var i = 0; i < 624; i++) {
-      var y = (exports.MT[ i ] & 0x80000000) + (exports.MT[(i + 1) % 624 ] & 0x7fffffff);
-      exports.MT[ i ] = exports.MT[ (i + 397) % 624] ^ (y >> 1);
-      if (y % 2 != 0) {
-        exports.MT[ i ] = exports.MT[ i ] ^ 2567483615;
+    for(var i = 0; i < n; i++) {
+      var x = (exports.MT[ i ] & upper_mask) +
+        (exports.MT[(i + 1) % n ] & lower_mask);
+
+      var xA = (x >> 1);
+      if (x % 2 != 0) {
+        xA = xA ^ a;
       }
+      exports.MT[ i ] = exports.MT[ (i + m) % n] ^ xA;
     }
   }
+
+  function random() {
+    return (exports.extractNumber() / lower_mask);
+  }
+
+  exports.MT = new Uint32Array(624);
   exports.generateNumbers = generateNumbers;
   exports.extractNumber = extractNumber;
-  function random() { return (exports.extractNumber() / 0x7FFFFFFF); }
   exports.setSeed = setSeed;
   exports.random = random;
+
+  // Initialize
   setSeed(0);
+
   return exports;
 }({});
 
@@ -46,7 +81,10 @@ function squareDistance(v1, v2) {
   var dy = (v2[1]-v1[1]);
   return dx*dx + dy*dy;
 }
-function norm(t, a, b) {return (t - a) / (b - a);}
+
+function norm(t, a, b) {
+  return (t - a) / (b - a);
+}
 
 //////////////////////////////////////////
 
@@ -60,6 +98,7 @@ ctx = canvas.getContext('2d');
 document.body.appendChild(canvas);
 
 var vertices;
+
 function update() {
   PRNG.setSeed(3);
 
