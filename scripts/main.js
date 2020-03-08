@@ -1,4 +1,14 @@
-var GUI = new dat.GUI({ load: JSON });
+// Color Structure
+var blob = {
+  seed: 3,
+  fg: "#FFF",
+  stroke: "#FFF",
+  bg: "#000",
+  count: 20,
+  spawn: 40,
+  offset: 100,
+  fills: 0.95,
+};
 
 // Implementation of MT19947
 // see: https://en.wikipedia.org/wiki/Mersenne_Twister
@@ -59,7 +69,11 @@ var PRNG = function(exports) {
     }
   }
 
-  function random() { return (exports.extractNumber() / lower_mask); }
+  function random() {
+    const res = exports.extractNumber() / lower_mask;
+    //console.log(`value: ${res}`);
+    return res;
+  }
 
   exports.MT = new Uint32Array(n);
   exports.generateNumbers = generateNumbers;
@@ -82,7 +96,6 @@ function norm(t, a, b) {
 }
 
 //////////////////////////////////////////
-
 var size = 1024;
 var canvas = document.createElement('canvas');
 canvas.style.position ="absolute";
@@ -92,18 +105,39 @@ canvas.width = canvas.height = size;
 ctx = canvas.getContext('2d');
 document.body.appendChild(canvas);
 
+// GUI
+var gui = new dat.GUI({ load: JSON });
+gui.add(blob, "seed", 0, 64, 1);
+var colorGUI = gui.addFolder("Color");
+{
+  colorGUI.addColor(blob, "fg");
+  colorGUI.addColor(blob, "stroke");
+  colorGUI.addColor(blob, "bg");
+  //colorGUI.open();
+}
+var paramsGUI = gui.addFolder("Params");
+{
+  paramsGUI.add(blob, "count", 1, 100, 1);
+  paramsGUI.add(blob, "spawn", 1, 100, 1);
+  paramsGUI.add(blob, "offset", 1, 500, 1);
+  paramsGUI.add(blob, "fills", 0.75, 1.00, 0.0125);
+  //paramsGUI.open();
+}
+gui.close();
+
+
 var vertices;
 
 function update() {
-  PRNG.setSeed(3);
+  PRNG.setSeed(blob.seed);
 
   var r, a, v, o;
-  var count   = 20;
-  var spawn   = 40;
-  var offset  = 100;
+  var count   = blob.count;
+  var spawn   = blob.spawn;
+  var offset  = blob.offset;
   vertices = [];
   for(var i = 0; i < count; i++) {
-    r = (PRNG.random() - .5) * window.innerWidth / 2;
+    r = (PRNG.random() - .5)  * window.innerWidth / 2;
     a = (i%2==0?1:-1) * Date.now() * 0.0001 + PRNG.random() * Math.PI * 2;
     v = [
       Math.cos(a) * r,
@@ -116,7 +150,7 @@ function update() {
       a = (j%2==0?1:-1) * Date.now() * 0.0002 + PRNG.random() * Math.PI * 2;
       o = vertices[ 0 ];
       v = [
-        o[0] + Math.cos(a % r) * r,
+        o[0] + Math.cos(a % r) * r ,
         o[1] + Math.sin(a % r * 2) * r
       ];
       vertices.push(v);
@@ -130,11 +164,11 @@ function update() {
   canvas.height = window.innerHeight;
 
   ctx.globalAlpha = 1;
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = `${blob.bg}`;
   ctx.fillRect(0,0, canvas.width, canvas.height);
   ctx.translate(canvas.width/2,canvas.height/2);
 
-  ctx.strokeStyle = "#FFF";
+  ctx.strokeStyle = `${blob.stroke}`;
   var m = size/8;
   for(i = 8; i <= m; i *= 2) {
     ctx.globalAlpha = (1 - i/m) * .1;
@@ -145,12 +179,11 @@ function update() {
 
 
 function yolo(vertices, size, _w, _h) {
-
-  //measures of an equalateral triangle
-  var sides = 3;
-  var l =	2 * Math.sin(Math.PI / sides);            //side length
-  var a = l / (2 * Math.tan(Math.PI / sides));    //apothem
-  var h = (1 + a);                                  //radius + apothem
+  //measures of an equalateral  triangle
+  const sides = 3;
+  var l =	2 * Math.sin(Math.PI / sides); //side length
+  var a = l / (2 * Math.tan(Math.PI / sides)); //apothem
+  var h = (1 + a); //radius + apothem
 
   size = size || 1;
   l *= size;
@@ -162,21 +195,16 @@ function yolo(vertices, size, _w, _h) {
   var fills = [];
   ctx.beginPath();
   vertices.forEach(function(v) {
-
     var cell_x = Math.round(norm(v[0], 0, _w) * mx);
     var cell_y = Math.round(norm(v[1], 0, _h) * my);
 
     var md = Number.POSITIVE_INFINITY, d, x, y, ix, iy, ps = [];
     for(var i = cell_x - 2; i < cell_x + 2; i++) {
-
       for(var j = cell_y - 2; j < cell_y + 2; j++) {
-
         if((Math.abs(i) % 2 == 1 && Math.abs(j) % 2 == 0)
           ||  (Math.abs(i) % 4 == 0 && Math.abs(j) % 2 == 1)) {
-
           ix = (i) * l/2;
           iy = (j) * h;
-
           d = squareDistance([ix,iy], v);
           if(d < md) {
             md = d;
@@ -188,22 +216,20 @@ function yolo(vertices, size, _w, _h) {
       }
     }
 
-    if(PRNG.random() > .5) {
+    if(PRNG.random() > 0.5) {
       ctx.moveTo(v[0], v[1]);
       ctx.lineTo(ps[0], ps[1]);
     } else {
       ctx.moveTo(ps[0], ps[1]);
       ctx.lineTo(ps[2], ps[3]);
-      if(PRNG.random() > .95) {
+      if(PRNG.random() > blob.fills) {
         fills.push(ps);
       }
     }
-
   });
   ctx.stroke();
-
   ctx.beginPath();
-  ctx.fillStyle = "#FFF";
+  ctx.fillStyle = `${blob.fg}`;
   fills.forEach(function(ps) {
     ctx.moveTo(ps[0], ps[1]);
     ctx.lineTo(ps[2], ps[3]);
