@@ -21,7 +21,7 @@ var PRNG = function(exports) {
 
   const l = 18;
 
-  const lower_mask = (1 << r) - 1;
+  const lower_mask =  ( ( 1 << r ) >>> 0) - 1;
   const upper_mask = lower_mask + 1;
 
   const f = 1812433253;
@@ -51,32 +51,23 @@ var PRNG = function(exports) {
     for(var i = 0; i < n; i++) {
       var x = (exports.MT[ i ] & upper_mask) +
         (exports.MT[(i + 1) % n ] & lower_mask);
-
-      exports.MT[ i ] = exports.MT[ (i + m) % n] ^ (x >> 1);
+      var xA = (x >> 1);
       if (x % 2 != 0) {
-        exports.MT[ i ] = exports.MT[ i ] ^ a;
+        xA = xA ^ a;
       }
-      //var xA = (x >> 1);
-      //if (x % 2 != 0) {
-      //  xA = xA ^ a;
-      //}
-      //exports.MT[ i ] = exports.MT[ (i + m) % n] ^ xA;
+      exports.MT[ i ] = exports.MT[ (i + m) % n] ^ xA;
     }
   }
 
-  function random() {
-    return (exports.extractNumber() / lower_mask);
-  }
+  function random() { return (exports.extractNumber() / lower_mask); }
 
   exports.MT = new Uint32Array(n);
   exports.generateNumbers = generateNumbers;
   exports.extractNumber = extractNumber;
   exports.setSeed = setSeed;
   exports.random = random;
-
   // Initialize
   setSeed(0);
-
   return exports;
 }({});
 
